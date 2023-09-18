@@ -51,30 +51,6 @@ class Workout {
       ` on ${months[this.date.getMonth()]} ${this.date.getDate()}`;
   }
 
-  // set coords(val) {
-  //   this.coords = val;
-  // }
-
-  // get coords() {
-  //   return this._coords;
-  // }
-
-  // set distance(val) {
-  //   this.distance = val;
-  // }
-
-  // get distance() {
-  //   return this._distance;
-  // }
-
-  // set duration(val) {
-  //   this.duration = val;
-  // }
-
-  // get duration() {
-  //   return this._duration;
-  // }
-
   click() {
     this.clicks++;
   }
@@ -88,14 +64,6 @@ class Running extends Workout {
     this.calcPace();
     this._setDescription();
   }
-
-  // set cadence(val) {
-  //   this._cadence = val;
-  // }
-
-  // get cadence() {
-  //   return this._cadence;
-  // }
 
   calcPace() {
     this.pace = this.duration / this.distance;
@@ -111,14 +79,6 @@ class Cycling extends Workout {
     this.calcSpeed();
     this._setDescription();
   }
-
-  // set elevationGain(val) {
-  //   this._elevationGain = val;
-  // }
-
-  // get elevationGain() {
-  //   return this._elevationGain;
-  // }
 
   calcSpeed() {
     this.speed = this.distance / (this.duration / 60);
@@ -153,40 +113,6 @@ class App {
     containerWorkouts.addEventListener(`click`, this._moveToPopup.bind(this));
 
     resetButton.addEventListener('click', this.reset.bind(this));
-  }
-
-  _sortWorkouts() {
-    let workoutsCopy = [...this.#workouts];
-
-    switch (inputSort.value) {
-      case `time`:
-        workoutsCopy = [...this.#workouts];
-        break;
-      case `distance`:
-        workoutsCopy.sort(
-          (workout1, workout2) => workout1.distance - workout2.distance
-        );
-        break;
-      case `duration`:
-        workoutsCopy.sort(
-          (workout1, workout2) => workout1.duration - workout2.duration
-        );
-        break;
-      case `type`:
-        workoutsCopy = [
-          ...this.#workouts.filter(workout => workout.type === `running`),
-          ...this.#workouts.filter(workout => workout.type === `cycling`),
-        ];
-        break;
-    }
-
-    containerWorkouts
-      .querySelectorAll(`.workout`)
-      .forEach(workout => workout.remove());
-
-    workoutsCopy.forEach(workout => {
-      this._renderWorkout(workout, true);
-    });
   }
 
   _getPosition() {
@@ -480,37 +406,54 @@ class App {
   }
 
   _editWorkout(e) {
+    // first of all we take the workout in its entirety since we'll need to query select different elements
     const currentWorkout = e.target.closest(`.workout`);
 
+    // we need just clicks that happen close to the values we need to modify, discard everything else with a guard clause
     if (!e.target.closest(`.workout__details`)) return;
 
+    // redirect the click to the closest workout value
     const workoutValue = e.target
       .closest(`.workout__details`)
       .querySelector(`.workout__value`);
+
+    // take the ID so we can update the array in tandem
     const currentID = e.target.closest(`.workout`).dataset.id;
 
-    // prevent input field from being rewritten by just clicking
+    // using this guard clause prevents the input field from being emptied
     if (
       workoutValue.querySelector(`.workout__field`) ||
       !workoutValue.dataset.value
     )
       return;
 
+    // mutate the content from simple text to input field, so the user can give new values, type set to number otherwise it would pick up any digit
     workoutValue.innerHTML =
-      '<input class="workout__field"  value="' + workoutValue.innerText + '">';
+      '<input class="workout__field"  value="' +
+      workoutValue.innerText +
+      '" type="number" min="1" max="9999">';
 
+    const workoutField = workoutValue.querySelector(`.workout__field`);
+    // we use this event handler so that we can update the list element AND the array just when enter is pressed
     workoutValue.addEventListener('keypress', e => {
+      // pick the workout entry from the array, by using the ID both the list element and the array entry have in common
       const workout = this.#workouts.find(workout => workout.id === currentID);
 
-      if (e.key === 'Enter') {
-        workoutValue.innerHTML = `${
-          workoutValue.querySelector(`.workout__field`).value
-        }`;
+      // guard clause so it won't exceed in value that would destroy the layout
+      if (workoutField.value.length > 4) e.preventDefault();
 
+      if (e.key === 'Enter') {
+        // return back from the input field to text content
+        workoutValue.innerHTML = `${workoutField.value}`;
+
+        // update the value of the specific entry property to user input
         workout[`${workoutValue.dataset.value}`] = workoutValue.innerText;
 
+        // ####  IMPORTANT
+        // since it's all handled differently from creating workouts, we NEED to save into the local storage
         this._setLocaleStorage();
 
+        // it would normally update simply on reload, but it's far more classy to update the pace/speed irl
         if (workout.type === `running`) {
           workout.calcPace();
 
@@ -523,6 +466,45 @@ class App {
             workout.speed.toFixed(1);
         }
       }
+    });
+  }
+
+  _sortWorkouts() {
+    // first of all make a copy of the array, since some methods mutate it
+    let workoutsCopy = [...this.#workouts];
+
+    switch (inputSort.value) {
+      // sort by time is just the order in which the elements are pushed
+      case `time`:
+        workoutsCopy = [...this.#workouts];
+        break;
+      case `distance`:
+        // sort by distance using the distance property of the objects
+        workoutsCopy.sort(
+          (workout1, workout2) => workout1.distance - workout2.distance
+        );
+        break;
+      case `duration`:
+        // sort by duration uses duration
+        workoutsCopy.sort(
+          (workout1, workout2) => workout1.duration - workout2.duration
+        );
+        break;
+      case `type`:
+        // we create two arrays and merge them, it might be more troublesome if there were more types but in that case we could just save every type in array and filter using each entry in that array
+        workoutsCopy = [
+          ...this.#workouts.filter(workout => workout.type === `running`),
+          ...this.#workouts.filter(workout => workout.type === `cycling`),
+        ];
+        break;
+    }
+
+    containerWorkouts
+      .querySelectorAll(`.workout`)
+      .forEach(workout => workout.remove());
+
+    workoutsCopy.forEach(workout => {
+      this._renderWorkout(workout, true);
     });
   }
 
