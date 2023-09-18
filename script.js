@@ -231,6 +231,9 @@ class App {
     this._renderWorkoutMarker(workout);
 
     this._renderWorkout(workout);
+
+    // adding this so the user can be them rendered by the sorting chosen when adding
+    this._sortWorkouts();
   }
 
   // render workout marker on map
